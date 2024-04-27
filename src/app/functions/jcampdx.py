@@ -81,6 +81,13 @@ def get_jdx_from_dynamodb(id: str) -> str:
         response = dynamodb.get_item(
             TableName=os.environ.get("TABLE_NAME"), Key={"jdx_id": {"S": id}}
         )
+        if "Item" not in response:
+            raise ValueError(f"No item found with ID: {id}")
+
+        jdx_data = response["Item"].get("jdx_data", {}).get("S")
+        if jdx_data is None:
+            raise ValueError(f"'jdx_data' is missing for ID: {id}")
+
         return response.get("Item").get("jdx_data").get("S")
     except Exception as e:
         print(f"Error fetching JDX data from DynamoDB: {str(e)}")
