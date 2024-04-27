@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>JCAMP-DX Visualization with Plotly</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  </head>
+  <body>
+    <input type="text" id="jdxIdInput" placeholder="Enter JDX ID" />
+    <button onclick="fetchAndVisualize()">Fetch and Visualize</button>
+    <div id="plot"></div>
+
+    <script>
+      function fetchAndVisualize() {
+        const jdxId = document.getElementById("jdxIdInput").value;
+        console.log(jdxId);
+        const url = "{APIのURL}/jcampdx/";
+
+        fetch(url + jdxId)
+          .then((response) => response.json())
+          .then((data) => {
+            const xValues = data.x || [];
+            const yValues = data.y || [];
+
+            const trace = {
+              x: xValues,
+              y: yValues,
+              type: "scatter",
+              mode: "lines+markers",
+              marker: {
+                color: "blue",
+              },
+              line: {
+                width: 2,
+              },
+            };
+
+            const layout = {
+              title: "JCAMP-DX Data Visualization",
+              xaxis: {
+                title: "Wavenumber (cm-1)",
+              },
+              yaxis: {
+                title: "Intensity",
+              },
+            };
+
+            Plotly.newPlot("plot", [trace], layout);
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+    </script>
+  </body>
+</html>
