@@ -1,0 +1,142 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  jcampdx-api
+
+  Sample SAM Template for jcampdx-api
+
+Parameters:
+  AppName:
+    Type: String
+    Default: jcampdx-sample
+  StageName:
+    Type: String
+    Default: dev
+  LogLevel:
+    Type: String
+    Default: INFO
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 128
+
+    LoggingConfig:
+      LogFormat: JSON
+Resources:
+
+  #----------------------------------------
+  # Amazon DynamoDB Table
+  #----------------------------------------
+  JcampdxTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      TableName: !Sub ${AppName}-jcampdx-table
+      AttributeDefinitions: 
+        - AttributeName: jdx_id
+          AttributeType: S       
+      KeySchema: 
+        - AttributeName: jdx_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  #----------------------------------------
+  # Amazon API Gateway
+  #----------------------------------------
+  JcampdxApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: !Sub ${AppName}-jcampdx-api
+      StageName: !Ref StageName
+
+
+  #----------------------------------------
+  # AWS Lambda Layer
+  #----------------------------------------
+  JcampdxLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName:  !Sub ${AppName}-jcampdx-layer
+      Description: Python Jcampdx Layer
+      ContentUri: requirements_layer/
+      CompatibleRuntimes:
+        - python3.11
+    Metadata:
+      BuildMethod: python3.11
+
+  #----------------------------------------
+  # AWS Lambda Function
+  #----------------------------------------
+  JcampdxFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AppName}-jcampdx-function
+      CodeUri: src/
+      Handler: app.functions.jcampdx.handler
+      Runtime: python3.11
+      Role: !GetAtt JcampdxFunctionRole.Arn
+      Architectures:
+        - x86_64
+      Environment: 
+        Variables:
+          POWERTOOLS_LOG_LEVEL: !Ref LogLevel
+          AWS_LAMBDA_LOG_LEVEL: NOTSET
+          TABLE_NAME: !Ref JcampdxTable
+      Events:
+        JcampdxApiHttpApiEvent:
+          Type: HttpApi
+          Properties:
+            Path: /jcampdx/{jcampdx_id}
+            Method: get
+            ApiId: !Ref JcampdxApi
+      Layers:
+        - !Ref JcampdxLayer
+        - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:59
+
+  #----------------------------------------
+  # IAM Role
+  #----------------------------------------
+  JcampdxFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: JcampdxFunctionRole
+      RoleName: !Sub ${AppName}-jcampdx-function-role
+      Path: /
+
+  #----------------------------------------
+  # IAM Policy
+  #----------------------------------------
+  JcampdxFunctionPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+            Resource:
+              - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${JcampdxFunction}:*
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              - !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${JcampdxFunction}:*
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+            Resource:
+              - !GetAtt JcampdxTable.Arn
+      PolicyName: !Sub ${AppName}-jcampdx-function-policy
+      Roles:
+        - !Ref JcampdxFunctionRole

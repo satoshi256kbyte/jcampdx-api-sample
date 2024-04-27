@@ -1,0 +1,33 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+aws-lambda-powertools = "*"
+boto3 = "*"
+jcamp = "*"
+numpy = "*"
+
+[dev-packages]
+aws-lambda-powertools = "*"
+boto3 = "*"
+jcamp = "*"
+numpy = "*"
+pytest = "*"
+black = "*"
+isort = "*"
+flake8 = "*"
+pre-commit = "*"
+flake8-bandit = "*"
+editorconfig-checker = "*"
+
+[requires]
+python_version = "3.11"
+
+[scripts]
+unittest = "pytest --no-cov"
+coverage = "pytest --cov-report=term"
+lint = "bash -c 'flake8 src/app && ec'"
+format = "bash -c 'isort src/app tests && black src/app tests'"
+checkformat = "bash -c 'isort src/app tests --check && black src/app tests --check'"
